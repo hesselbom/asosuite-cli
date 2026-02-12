@@ -1,0 +1,36 @@
+{
+  "name": "asosuite-cli",
+  "version": "0.1.0",
+  "description": "Official ASO Suite CLI",
+  "type": "module",
+  "bin": {
+    "asosuite": "src/index.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "start": "node src/index.mjs",
+    "format": "prettier --write ."
+  },
+  "keywords": [
+    "asosuite",
+    "aso",
+    "cli"
+  ],
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hesselbom/asosuite-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/hesselbom/asosuite-cli/issues"
+  },
+  "homepage": "https://www.asosuite.com/",
+  "devDependencies": {
+    "prettier": "3.2.5"
+  }
+}
