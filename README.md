@@ -11,6 +11,24 @@ ASO Suite CLI is a small command-line client for [ASO Suite](https://www.asosuit
   - Defaults: `region=US`, `platform=iphone`.
   - Supported platforms: `iphone`, `ipad`, `mac`, `appletv`, `watch`, `vision`.
 
+### Example: keywords response
+
+```bash
+asosuite keywords --region US --platform iphone --app 1606429298 "step counter" "water tracker"
+```
+
+```text
+Region: US
+Keywords: 2
+App ID: 1606429298
+Platform: iphone
+
+Keyword        Popularity  Difficulty  Position
+-------------  ----------  ----------  --------
+step counter           42          37       #24
+water tracker          58          41       #12
+```
+
 ## Install (local)
 
 Clone the repo, then from the root folder:
