@@ -31,6 +31,10 @@ function printError(message = '') {
   process.stderr.write(`${message}\n`)
 }
 
+function printJson(payload) {
+  print(JSON.stringify(payload, null, 2))
+}
+
 function parseArgs(argv) {
   const args = [...argv]
   return {
@@ -308,14 +312,15 @@ function printHelp() {
   print('Usage:')
   print('  asosuite login [--no-open]')
   print('  asosuite logout')
-  print('  asosuite subscription')
+  print('  asosuite subscription [--json]')
   print(
-    `  asosuite keywords [--region <REGION>] [--platform <PLATFORM>] [--app <APP_ID_OR_URL>] <keyword...>`,
+    `  asosuite keywords [--json] [--region <REGION>] [--platform <PLATFORM>] [--app <APP_ID_OR_URL>] <keyword...>`,
   )
   print('  asosuite help')
   print('')
   print(`Defaults: region=${DEFAULT_REGION}, platform=${DEFAULT_PLATFORM}`)
   print('Supported platforms: iphone, ipad, mac, appletv, watch, vision')
+  print('Output: use --json for pretty-printed JSON output')
   print('')
   print('Examples:')
   print('  asosuite keywords keyword1 keyword2')
@@ -439,6 +444,7 @@ async function runAuthLogout() {
 
 async function runSubscriptionStatus(rest) {
   const config = await loadConfig()
+  const outputJson = takeFlag(rest, '--json')
 
   if (rest.length > 0) {
     throw new Error(`Unknown arguments: ${rest.join(' ')}`)
@@ -454,6 +460,11 @@ async function runSubscriptionStatus(rest) {
     pathName: '/api/cli/subscription',
     accessToken,
   })
+
+  if (outputJson) {
+    printJson(subscription)
+    return
+  }
 
   print(`Plan: ${subscription.plan}`)
   print(`Active: ${subscription.active ? 'yes' : 'no'}`)
@@ -532,6 +543,7 @@ function printKeywordMetricsTable(metrics, options = { showPosition: false }) {
 
 async function runKeywordMetrics(rest) {
   const config = await loadConfig()
+  const outputJson = takeFlag(rest, '--json')
   const regionValue = takeOption(rest, '--region')
   const platformValue = takeOption(rest, '--platform')
   const appOptionValue = takeOption(rest, '--app')
@@ -595,6 +607,11 @@ async function runKeywordMetrics(rest) {
       platform,
     },
   })
+
+  if (outputJson) {
+    printJson(response)
+    return
+  }
 
   print(`Region: ${response.region}`)
   print(`Keywords: ${response.keywordCount}`)

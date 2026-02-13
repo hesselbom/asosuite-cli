@@ -6,10 +6,11 @@ ASO Suite CLI is a small command-line client for [ASO Suite](https://www.asosuit
 
 - `asosuite login`
 - `asosuite logout`
-- `asosuite subscription`
-- `asosuite keywords [--region <REGION>] [--platform <PLATFORM>] [--app <APP_ID_OR_URL>] <keyword...>`
+- `asosuite subscription [--json]`
+- `asosuite keywords [--json] [--region <REGION>] [--platform <PLATFORM>] [--app <APP_ID_OR_URL>] <keyword...>`
   - Defaults: `region=US`, `platform=iphone`.
   - Supported platforms: `iphone`, `ipad`, `mac`, `appletv`, `watch`, `vision`.
+  - Use `--json` to output pretty-printed JSON instead of text/table formatting.
 
 ### Example: keywords response
 
@@ -27,6 +28,12 @@ Keyword        Popularity  Difficulty  Position
 -------------  ----------  ----------  --------
 step counter           42          37       #24
 water tracker          58          41       #12
+```
+
+### Example: keywords response as JSON
+
+```bash
+asosuite keywords --json --region US --platform iphone --app 1606429298 "step counter" "water tracker"
 ```
 
 ## Install (local)
