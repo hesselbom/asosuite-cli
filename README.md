@@ -2,6 +2,32 @@
 
 ASO Suite CLI is a small command-line client for [ASO Suite](https://www.asosuite.com/) subscribers.
 
+## Install (npm global)
+
+Install from npm:
+
+```bash
+npm install -g asosuite
+
+# Check that it's working
+asosuite help
+```
+
+## Install (local development)
+
+Clone the repo, then from the root folder:
+
+```bash
+# Install dependencies
+npm install
+
+# Link the CLI globally
+npm link
+
+# Check that it's working
+asosuite help
+```
+
 ## Commands
 
 - `asosuite login`
@@ -173,21 +199,6 @@ asosuite ratings --app 6448311069 --platform iphone --period 30
 
 ```bash
 asosuite charts --json --app 6448311069 --platform iphone
-```
-
-## Install (local)
-
-Clone the repo, then from the root folder:
-
-```bash
-# Install dependencies
-npm install
-
-# Link the CLI globally
-npm link
-
-# Check that it's working
-asosuite help
 ```
 
 ## Authentication flow
