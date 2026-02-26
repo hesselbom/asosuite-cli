@@ -156,7 +156,7 @@ asosuite events list --app 6448311069
 ### Add an event
 
 ```bash
-asosuite events add --app 6448311069 --text "Release v2.0" --date 2026-02-25
+asosuite events add --app 6448311069 --text "Started ASO for 'keyword x'" --date 2026-02-25
 ```
 
 ### Delete an event
