@@ -2350,14 +2350,51 @@ run().catch((error) => {
   }
 
   if (status === 402) {
+    const payload =
+      error?.payload && typeof error.payload === 'object' ? error.payload : null
+    const code = payload && typeof payload.code === 'string' ? payload.code : ''
+
+    if (code === 'cli_free_unit_limit_reached') {
+      const message =
+        typeof error?.message === 'string'
+          ? error.message
+          : 'Free CLI usage credits reached.'
+      printError(message)
+
+      const totalUnits = Number(payload?.freeUnitLimit)
+      const usedUnits = Number(payload?.usedUnits)
+      const remainingUnits = Number(payload?.remainingUnits)
+
+      if (Number.isFinite(totalUnits) && Number.isFinite(usedUnits)) {
+        printError(
+          `Free usage credits: ${Math.max(0, Math.floor(usedUnits)).toLocaleString()} / ${Math.max(0, Math.floor(totalUnits)).toLocaleString()}`,
+        )
+      }
+
+      if (Number.isFinite(remainingUnits)) {
+        printError(
+          `Remaining free credits: ${Math.max(0, Math.floor(remainingUnits)).toLocaleString()}`,
+        )
+      }
+
+      const subscribeUrl =
+        typeof payload?.subscribeUrl === 'string' ? payload.subscribeUrl : null
+      if (subscribeUrl && subscribeUrl.trim()) {
+        printError(`Subscribe: ${subscribeUrl}`)
+      }
+
+      process.exit(1)
+      return
+    }
+
     const message =
       typeof error?.message === 'string'
         ? error.message
         : 'Subscription required.'
     printError(message)
     const subscribeUrl =
-      error?.payload && typeof error.payload === 'object'
-        ? error.payload.subscribeUrl
+      payload && typeof payload.subscribeUrl === 'string'
+        ? payload.subscribeUrl
         : null
     if (typeof subscribeUrl === 'string' && subscribeUrl.trim()) {
       printError(`Subscribe: ${subscribeUrl}`)
