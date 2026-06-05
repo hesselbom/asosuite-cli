@@ -1,6 +1,6 @@
 ---
 name: asosuite
-description: Do App Store Optimization (ASO) with the ASO Suite CLI across iPhone, iPad, Mac, Apple TV, Apple Watch, and VisionOS by finding keywords with popularity/difficulty data, tracking keyword position over time, and monitoring ratings, editorial features, and chart appearances.
+description: Do App Store Optimization (ASO) with the ASO Suite CLI across iPhone, iPad, Mac, Apple TV, Apple Watch, and VisionOS by finding keywords with popularity/difficulty data, tracking keyword position over time, annotating tracked keywords with notes and global color-coded tags, and monitoring ratings, editorial features, and chart appearances.
 homepage: https://www.asosuite.com/
 metadata:
   {
@@ -24,7 +24,7 @@ metadata:
 
 # ASO Suite CLI
 
-Use `asosuite` to run ASO workflows across iPhone, iPad, Mac, Apple TV, Apple Watch, and VisionOS apps: discover keywords with popularity and difficulty data, track keyword position over time, and monitor ratings, editorial features, and chart appearances with machine-readable output.
+Use `asosuite` to run ASO workflows across iPhone, iPad, Mac, Apple TV, Apple Watch, and VisionOS apps: discover keywords with popularity and difficulty data, track keyword position over time, annotate tracked keywords with notes and global color-coded tags, and monitor ratings, editorial features, and chart appearances with machine-readable output.
 
 ## Setup
 
@@ -65,9 +65,16 @@ Commands that do not take `--json`: `login`, `logout`.
 - `asosuite untrack-app [--json] [--region <REGION>] [--platform <PLATFORM>] --app <APP_ID_OR_URL>`
 - `asosuite plan-app [--json] --name <APP_NAME> [--id <PLANNED_APP_ID>] [--region <REGION>] [--platform <PLATFORM>]`
 - `asosuite unplan-app [--json] --id <PLANNED_APP_ID> [--region <REGION>] [--platform <PLATFORM>]`
-- `asosuite tracked-keywords list [--json] [--region <REGION>] [--platform <PLATFORM>] [--page <NUMBER>] [--sort <FIELD>] [--order <asc|desc>] --app <APP_ID_OR_URL_OR_PLANNED_ID>`
+- `asosuite tracked-keywords list [--json] [--region <REGION>] [--platform <PLATFORM>] [--page <NUMBER>] [--sort <FIELD>] [--order <asc|desc>] [--tag <TAG_ID> | --tags <TAG_IDS>] --app <APP_ID_OR_URL_OR_PLANNED_ID>`
 - `asosuite tracked-keywords add [--json] [--region <REGION>] [--platform <PLATFORM>] --app <APP_ID_OR_URL_OR_PLANNED_ID> <keyword...>`
 - `asosuite tracked-keywords remove [--json] [--region <REGION>] [--platform <PLATFORM>] --app <APP_ID_OR_URL_OR_PLANNED_ID> <keyword...>`
+- `asosuite tracked-keywords note set [--json] [--region <REGION>] [--platform <PLATFORM>] --app <APP_ID_OR_URL_OR_PLANNED_ID> --keyword <KEYWORD> --text <TEXT>`
+- `asosuite tracked-keywords note clear [--json] [--region <REGION>] [--platform <PLATFORM>] --app <APP_ID_OR_URL_OR_PLANNED_ID> --keyword <KEYWORD>`
+- `asosuite tracked-keywords tags set [--json] [--region <REGION>] [--platform <PLATFORM>] --app <APP_ID_OR_URL_OR_PLANNED_ID> --keyword <KEYWORD> [--tag <TAG_ID> | --tags <TAG_IDS>]`
+- `asosuite tags list [--json]`
+- `asosuite tags create [--json] --name <NAME> --color <HEX>`
+- `asosuite tags edit [--json] --id <TAG_ID> [--name <NAME>] [--color <HEX>]`
+- `asosuite tags delete [--json] --id <TAG_ID>`
 - `asosuite related-apps list [--json] --app <APP_ID_OR_URL> [--platform <PLATFORM>]`
 - `asosuite related-apps add [--json] --app <APP_ID_OR_URL> --related <APP_ID_OR_URL> [--platform <PLATFORM>] [--region <REGION>]`
 - `asosuite related-apps remove [--json] --app <APP_ID_OR_URL> --related <APP_ID_OR_URL> [--platform <PLATFORM>]`
@@ -100,6 +107,15 @@ asosuite tracked-keywords list --json --app 6448311069 --platform iphone --regio
 asosuite tracked-keywords add --json --app 6448311069 --platform iphone --region US "step counter" "water tracker"
 asosuite tracked-keywords remove --json --app 6448311069 --platform iphone --region US "step counter" "water tracker"
 
+# Keyword notes and tags
+asosuite tags list --json
+asosuite tags create --json --name important --color "#ef4444"
+asosuite tags edit --json --id 1 --name "high intent" --color "#f97316"
+asosuite tracked-keywords note set --json --app 6448311069 --platform iphone --region US --keyword "step counter" --text "1: 26.7k,12.9k"
+asosuite tracked-keywords note clear --json --app 6448311069 --platform iphone --region US --keyword "step counter"
+asosuite tracked-keywords tags set --json --app 6448311069 --platform iphone --region US --keyword "step counter" --tag 1
+asosuite tracked-keywords list --json --app 6448311069 --platform iphone --region US --tag 1 --sort tags --order asc
+
 # Related apps / competitors
 asosuite related-apps list --json --app 6448311069 --platform iphone
 asosuite related-apps add --json --app 6448311069 --related 333903271 --platform iphone --region US
@@ -119,7 +135,11 @@ asosuite events delete --json 123
 ## Notes
 
 - `tracked-keywords list` returns up to 50 keywords per page.
-- Sort fields for `tracked-keywords list`: `keyword`, `relevance`, `popularity`, `difficulty`, `position`, `lastUpdate`.
+- Sort fields for `tracked-keywords list`: `keyword`, `relevance`, `notes`, `tags`, `popularity`, `difficulty`, `position`, `lastUpdate`.
+- `tracked-keywords list --tag <TAG_ID>` or `--tags <TAG_ID,TAG_ID>` filters to keywords that have any selected tag.
+- Tag sorting is by tag label/name. Tagged rows sort before untagged rows for both ascending and descending order.
+- Tags are global for the user's tracking scope and can be applied to tracked app keywords or planned app keywords. Use tag IDs for edits, deletes, filters, and keyword assignment; labels can be renamed.
+- Keyword notes are free-text annotations on individual tracked keywords. Use `note clear` to remove a note.
 - Server limits:
   - `keywords`: up to 50 keywords per request
   - `tracked-keywords add`/`tracked-keywords remove`: up to 200 keywords per request

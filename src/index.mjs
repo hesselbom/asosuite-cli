@@ -21,6 +21,8 @@ const TRACKED_KEYWORDS_MAX_PAGE = 1000
 const TRACKED_KEYWORDS_SORT_FIELDS = new Set([
   'keyword',
   'relevance',
+  'notes',
+  'tags',
   'popularity',
   'difficulty',
   'position',
@@ -83,6 +85,52 @@ function takeFlag(rest, name) {
 
   rest.splice(index, 1)
   return true
+}
+
+function takeOptions(rest, name) {
+  const values = []
+
+  while (true) {
+    const index = rest.indexOf(name)
+    if (index === -1) {
+      break
+    }
+
+    if (index === rest.length - 1) {
+      throw new Error(`Missing value for ${name}`)
+    }
+
+    values.push(rest[index + 1])
+    rest.splice(index, 2)
+  }
+
+  return values
+}
+
+function parsePositiveInteger(value) {
+  const parsed = Number.parseInt(String(value || '').trim(), 10)
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null
+}
+
+function parseTagIds(values) {
+  const tagIds = []
+
+  for (const value of values) {
+    const raw = String(value || '').trim()
+    if (!raw) {
+      continue
+    }
+
+    for (const part of raw.split(',')) {
+      const parsed = parsePositiveInteger(part)
+      if (!parsed) {
+        throw new Error('Tag IDs must be positive integers')
+      }
+      tagIds.push(parsed)
+    }
+  }
+
+  return Array.from(new Set(tagIds))
 }
 
 async function loadConfig() {
@@ -474,6 +522,22 @@ function formatDate(iso) {
   return date.toISOString()
 }
 
+function formatTags(tags) {
+  if (!Array.isArray(tags) || tags.length === 0) {
+    return '-'
+  }
+
+  return tags
+    .map((tag) => (tag && typeof tag.name === 'string' ? tag.name : ''))
+    .filter(Boolean)
+    .join(',')
+}
+
+function formatNotes(notes) {
+  const normalized = String(notes || '').trim()
+  return normalized || '-'
+}
+
 function printHelp() {
   print('ASO Suite CLI')
   print('')
@@ -501,7 +565,7 @@ function printHelp() {
     '  asosuite unplan-app [--json] --id <PLANNED_APP_ID> [--region <REGION>] [--platform <PLATFORM>]',
   )
   print(
-    '  asosuite tracked-keywords list [--json] [--region <REGION>] [--platform <PLATFORM>] [--page <NUMBER>] [--sort <FIELD>] [--order <asc|desc>] --app <APP_ID_OR_URL_OR_PLANNED_ID>',
+    '  asosuite tracked-keywords list [--json] [--region <REGION>] [--platform <PLATFORM>] [--page <NUMBER>] [--sort <FIELD>] [--order <asc|desc>] [--tag <TAG_ID> | --tags <TAG_IDS>] --app <APP_ID_OR_URL_OR_PLANNED_ID>',
   )
   print(
     '  asosuite tracked-keywords add [--json] [--region <REGION>] [--platform <PLATFORM>] --app <APP_ID_OR_URL_OR_PLANNED_ID> <keyword...>',
@@ -509,6 +573,21 @@ function printHelp() {
   print(
     '  asosuite tracked-keywords remove [--json] [--region <REGION>] [--platform <PLATFORM>] --app <APP_ID_OR_URL_OR_PLANNED_ID> <keyword...>',
   )
+  print(
+    '  asosuite tracked-keywords note set [--json] [--region <REGION>] [--platform <PLATFORM>] --app <APP_ID_OR_URL_OR_PLANNED_ID> --keyword <KEYWORD> --text <TEXT>',
+  )
+  print(
+    '  asosuite tracked-keywords note clear [--json] [--region <REGION>] [--platform <PLATFORM>] --app <APP_ID_OR_URL_OR_PLANNED_ID> --keyword <KEYWORD>',
+  )
+  print(
+    '  asosuite tracked-keywords tags set [--json] [--region <REGION>] [--platform <PLATFORM>] --app <APP_ID_OR_URL_OR_PLANNED_ID> --keyword <KEYWORD> [--tag <TAG_ID> | --tags <TAG_IDS>]',
+  )
+  print('  asosuite tags list [--json]')
+  print('  asosuite tags create [--json] --name <NAME> --color <HEX>')
+  print(
+    '  asosuite tags edit [--json] --id <TAG_ID> [--name <NAME>] [--color <HEX>]',
+  )
+  print('  asosuite tags delete [--json] --id <TAG_ID>')
   print(
     '  asosuite related-apps list [--json] --app <APP_ID_OR_URL> [--platform <PLATFORM>]',
   )
@@ -538,7 +617,7 @@ function printHelp() {
   print('Supported platforms: iphone, ipad, mac, appletv, watch, vision')
   print('Output: use --json for single-line JSON output')
   print(
-    'tracked-keywords sort fields: keyword, relevance, popularity, difficulty, position, lastUpdate',
+    'tracked-keywords sort fields: keyword, relevance, notes, tags, popularity, difficulty, position, lastUpdate',
   )
   print('')
   print('Examples:')
@@ -1664,6 +1743,183 @@ async function runUnplanApp(rest) {
   print(`Region: ${region}`)
 }
 
+async function runTags(rest) {
+  const subcommand = String(rest.shift() || 'list')
+    .trim()
+    .toLowerCase()
+
+  if (subcommand === 'list') {
+    await runTagsList(rest)
+    return
+  }
+
+  if (subcommand === 'create' || subcommand === 'add') {
+    await runTagsCreate(rest)
+    return
+  }
+
+  if (subcommand === 'edit' || subcommand === 'update') {
+    await runTagsEdit(rest)
+    return
+  }
+
+  if (subcommand === 'delete' || subcommand === 'remove') {
+    await runTagsDelete(rest)
+    return
+  }
+
+  throw new Error(
+    `Unknown tags subcommand: ${subcommand}. Use list, create, edit, or delete.`,
+  )
+}
+
+async function runTagsList(rest) {
+  const config = await loadConfig()
+  const outputJson = takeFlag(rest, '--json')
+
+  if (rest.length > 0) {
+    throw new Error(`Unknown arguments: ${rest.join(' ')}`)
+  }
+
+  const accessToken = requireAuthenticatedAccessToken(config)
+  const response = await apiRequest({
+    pathName: '/api/cli/keyword-tags',
+    accessToken,
+  })
+
+  if (outputJson) {
+    printJson(response)
+    return
+  }
+
+  const tags = Array.isArray(response?.tags) ? response.tags : []
+  if (tags.length === 0) {
+    print('No tags found.')
+    return
+  }
+
+  printTable(
+    ['ID', 'Tag', 'Color', 'Used In'],
+    tags.map((tag) => [
+      String(tag.id ?? '-'),
+      tag.name || '-',
+      tag.color || '-',
+      `${tag.keywordCount ?? 0} keywords`,
+    ]),
+  )
+}
+
+async function runTagsCreate(rest) {
+  const config = await loadConfig()
+  const outputJson = takeFlag(rest, '--json')
+  const name = takeOption(rest, '--name')
+  const color = takeOption(rest, '--color')
+
+  if (rest.length > 0) {
+    throw new Error(`Unknown arguments: ${rest.join(' ')}`)
+  }
+
+  if (!String(name || '').trim()) {
+    throw new Error('Provide a tag name via --name <NAME>')
+  }
+
+  if (!String(color || '').trim()) {
+    throw new Error('Provide a tag color via --color <HEX>')
+  }
+
+  const accessToken = requireAuthenticatedAccessToken(config)
+  const response = await apiRequest({
+    pathName: '/api/cli/keyword-tags',
+    method: 'POST',
+    accessToken,
+    body: {
+      name,
+      color,
+    },
+  })
+
+  if (outputJson) {
+    printJson(response)
+    return
+  }
+
+  print('Created tag.')
+  print(`ID: ${response?.tag?.id ?? '-'}`)
+  print(`Name: ${response?.tag?.name ?? String(name).trim()}`)
+  print(`Color: ${response?.tag?.color ?? String(color).trim()}`)
+}
+
+async function runTagsEdit(rest) {
+  const config = await loadConfig()
+  const outputJson = takeFlag(rest, '--json')
+  const idValue = takeOption(rest, '--id')
+  const name = takeOption(rest, '--name')
+  const color = takeOption(rest, '--color')
+  const tagId = parsePositiveInteger(idValue)
+
+  if (rest.length > 0) {
+    throw new Error(`Unknown arguments: ${rest.join(' ')}`)
+  }
+
+  if (!tagId) {
+    throw new Error('Provide a tag id via --id <TAG_ID>')
+  }
+
+  if (name == null && color == null) {
+    throw new Error('Provide --name and/or --color to edit a tag')
+  }
+
+  const accessToken = requireAuthenticatedAccessToken(config)
+  const response = await apiRequest({
+    pathName: `/api/cli/keyword-tags/${tagId}`,
+    method: 'PUT',
+    accessToken,
+    body: {
+      ...(name != null ? { name } : {}),
+      ...(color != null ? { color } : {}),
+    },
+  })
+
+  if (outputJson) {
+    printJson(response)
+    return
+  }
+
+  print('Updated tag.')
+  print(`ID: ${response?.tag?.id ?? tagId}`)
+  print(`Name: ${response?.tag?.name ?? '-'}`)
+  print(`Color: ${response?.tag?.color ?? '-'}`)
+}
+
+async function runTagsDelete(rest) {
+  const config = await loadConfig()
+  const outputJson = takeFlag(rest, '--json')
+  const idValue = takeOption(rest, '--id')
+  const tagId = parsePositiveInteger(idValue)
+
+  if (rest.length > 0) {
+    throw new Error(`Unknown arguments: ${rest.join(' ')}`)
+  }
+
+  if (!tagId) {
+    throw new Error('Provide a tag id via --id <TAG_ID>')
+  }
+
+  const accessToken = requireAuthenticatedAccessToken(config)
+  await apiRequest({
+    pathName: `/api/cli/keyword-tags/${tagId}`,
+    method: 'DELETE',
+    accessToken,
+  })
+
+  if (outputJson) {
+    printJson({ ok: true, tagId })
+    return
+  }
+
+  print(`Deleted tag: ${tagId}`)
+}
+
 async function runTrackedKeywords(rest) {
   const subcommand = String(rest.shift() || '')
     .trim()
@@ -1693,6 +1949,16 @@ async function runTrackedKeywords(rest) {
     return
   }
 
+  if (subcommand === 'note' || subcommand === 'notes') {
+    await runTrackedKeywordNote(rest)
+    return
+  }
+
+  if (subcommand === 'tag' || subcommand === 'tags') {
+    await runTrackedKeywordTags(rest)
+    return
+  }
+
   if (parseAppInput(subcommand) || normalizePlannedTrackedAppId(subcommand)) {
     rest.unshift(subcommand)
     await runTrackedKeywordsList(rest)
@@ -1700,7 +1966,7 @@ async function runTrackedKeywords(rest) {
   }
 
   throw new Error(
-    `Unknown tracked-keywords subcommand: ${subcommand}. Use list, add, or remove.`,
+    `Unknown tracked-keywords subcommand: ${subcommand}. Use list, add, remove, note, or tags.`,
   )
 }
 
@@ -1846,6 +2112,141 @@ async function runTrackedKeywordsRemove(rest) {
   print(`Region: ${region}`)
 }
 
+function consumeKeywordOption(rest) {
+  const keyword = takeOption(rest, '--keyword')
+  const normalized = String(keyword || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+
+  if (!normalized) {
+    throw new Error('Provide a keyword via --keyword <KEYWORD>')
+  }
+
+  return normalized
+}
+
+async function runTrackedKeywordNote(rest) {
+  const subcommand = String(rest.shift() || 'set')
+    .trim()
+    .toLowerCase()
+
+  if (
+    subcommand !== 'set' &&
+    subcommand !== 'clear' &&
+    subcommand !== 'delete'
+  ) {
+    throw new Error('Unknown note subcommand. Use set or clear.')
+  }
+
+  const config = await loadConfig()
+  const outputJson = takeFlag(rest, '--json')
+  const platformValue = takeOption(rest, '--platform')
+  const regionValue = takeOption(rest, '--region')
+  const textValue = takeOption(rest, '--text')
+  const keyword = consumeKeywordOption(rest)
+  const target = consumeTrackedKeywordsAppTarget(rest)
+
+  if (rest.length > 0) {
+    throw new Error(`Unknown arguments: ${rest.join(' ')}`)
+  }
+
+  const accessToken = requireAuthenticatedAccessToken(config)
+  const platform = resolvePlatformArg(platformValue)
+  const region = resolveRegionArg(regionValue)
+  const notes = subcommand === 'set' ? String(textValue || '').trim() : null
+
+  if (subcommand === 'set' && !notes) {
+    throw new Error('Provide note text via --text <TEXT>')
+  }
+
+  const response = await apiRequest({
+    pathName: `/api/cli/apps/${encodeURIComponent(target.appIdentifier)}/${platform}/tracked-keywords/notes`,
+    method: 'PUT',
+    accessToken,
+    body: {
+      region,
+      keyword,
+      notes,
+    },
+  })
+
+  if (outputJson) {
+    printJson({
+      ok: true,
+      app: target.appIdentifier,
+      platform,
+      region,
+      keyword,
+      notes: response?.notes ?? null,
+    })
+    return
+  }
+
+  print(
+    subcommand === 'set' ? 'Updated keyword notes.' : 'Cleared keyword notes.',
+  )
+  print(`Keyword: ${keyword}`)
+  print(`Region: ${region}`)
+}
+
+async function runTrackedKeywordTags(rest) {
+  const subcommand = String(rest.shift() || 'set')
+    .trim()
+    .toLowerCase()
+
+  if (subcommand !== 'set' && subcommand !== 'apply') {
+    throw new Error('Unknown tags subcommand. Use set.')
+  }
+
+  const config = await loadConfig()
+  const outputJson = takeFlag(rest, '--json')
+  const platformValue = takeOption(rest, '--platform')
+  const regionValue = takeOption(rest, '--region')
+  const tagValues = [
+    ...takeOptions(rest, '--tag'),
+    ...takeOptions(rest, '--tags'),
+  ]
+  const keyword = consumeKeywordOption(rest)
+  const target = consumeTrackedKeywordsAppTarget(rest)
+
+  if (rest.length > 0) {
+    throw new Error(`Unknown arguments: ${rest.join(' ')}`)
+  }
+
+  const accessToken = requireAuthenticatedAccessToken(config)
+  const platform = resolvePlatformArg(platformValue)
+  const region = resolveRegionArg(regionValue)
+  const tagIds = parseTagIds(tagValues)
+
+  const response = await apiRequest({
+    pathName: `/api/cli/apps/${encodeURIComponent(target.appIdentifier)}/${platform}/tracked-keywords/tags`,
+    method: 'PUT',
+    accessToken,
+    body: {
+      region,
+      keyword,
+      tagIds,
+    },
+  })
+
+  if (outputJson) {
+    printJson({
+      ok: true,
+      app: target.appIdentifier,
+      platform,
+      region,
+      keyword,
+      tags: response?.tags ?? [],
+    })
+    return
+  }
+
+  print('Updated keyword tags.')
+  print(`Keyword: ${keyword}`)
+  print(`Region: ${region}`)
+  print(`Tags: ${formatTags(response?.tags ?? [])}`)
+}
+
 async function runTrackedKeywordsList(rest) {
   const config = await loadConfig()
   const outputJson = takeFlag(rest, '--json')
@@ -1854,6 +2255,10 @@ async function runTrackedKeywordsList(rest) {
   const pageValue = takeOption(rest, '--page')
   const sortValue = takeOption(rest, '--sort')
   const orderValue = takeOption(rest, '--order')
+  const tagValues = [
+    ...takeOptions(rest, '--tag'),
+    ...takeOptions(rest, '--tags'),
+  ]
   const target = consumeTrackedKeywordsAppTarget(rest)
 
   if (rest.length > 0) {
@@ -1866,6 +2271,7 @@ async function runTrackedKeywordsList(rest) {
   const page = resolveTrackedKeywordsPageArg(pageValue)
   const sort = resolveTrackedKeywordsSortArg(sortValue)
   const order = resolveTrackedKeywordsOrderArg(orderValue)
+  const tagIds = parseTagIds(tagValues)
 
   const searchParams = new URLSearchParams()
   if (region) {
@@ -1874,6 +2280,9 @@ async function runTrackedKeywordsList(rest) {
   searchParams.set('page', String(page))
   searchParams.set('sort', sort)
   searchParams.set('order', order)
+  if (tagIds.length > 0) {
+    searchParams.set('tagIds', tagIds.join(','))
+  }
 
   const query = searchParams.toString()
   const response = await apiRequest({
@@ -1931,6 +2340,8 @@ async function runTrackedKeywordsList(rest) {
       return [
         item.keyword || '-',
         item.region || '-',
+        formatTags(item.tags),
+        formatNotes(item.notes),
         formatMetricValue(
           item?.metrics?.popularity?.value,
           item?.metrics?.popularity?.pendingData,
@@ -1945,7 +2356,15 @@ async function runTrackedKeywordsList(rest) {
 
     print('')
     printTable(
-      ['Keyword', 'Region', 'Popularity', 'Difficulty', 'Position'],
+      [
+        'Keyword',
+        'Region',
+        'Tags',
+        'Notes',
+        'Popularity',
+        'Difficulty',
+        'Position',
+      ],
       keywordRows,
     )
     return
@@ -2282,6 +2701,11 @@ async function run() {
 
   if (command === 'unplan-app') {
     await runUnplanApp(rest)
+    return
+  }
+
+  if (command === 'tags') {
+    await runTags(rest)
     return
   }
 

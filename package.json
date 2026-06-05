@@ -1,6 +1,6 @@
 {
   "name": "asosuite",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Official ASO Suite CLI",
   "type": "module",
   "bin": {
@@ -10,7 +10,8 @@
     "node": ">=20"
   },
   "files": [
-    "src"
+    "src",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "start": "node src/index.mjs",

@@ -40,9 +40,16 @@ asosuite help
 - `asosuite untrack-app [--json] [--region <REGION>] [--platform <PLATFORM>] --app <APP_ID_OR_URL>`
 - `asosuite plan-app [--json] --name <APP_NAME> [--id <PLANNED_APP_ID>] [--region <REGION>] [--platform <PLATFORM>]`
 - `asosuite unplan-app [--json] --id <PLANNED_APP_ID> [--region <REGION>] [--platform <PLATFORM>]`
-- `asosuite tracked-keywords list [--json] [--region <REGION>] [--platform <PLATFORM>] [--page <NUMBER>] [--sort <FIELD>] [--order <asc|desc>] --app <APP_ID_OR_URL_OR_PLANNED_ID>`
+- `asosuite tracked-keywords list [--json] [--region <REGION>] [--platform <PLATFORM>] [--page <NUMBER>] [--sort <FIELD>] [--order <asc|desc>] [--tag <TAG_ID> | --tags <TAG_IDS>] --app <APP_ID_OR_URL_OR_PLANNED_ID>`
 - `asosuite tracked-keywords add [--json] [--region <REGION>] [--platform <PLATFORM>] --app <APP_ID_OR_URL_OR_PLANNED_ID> <keyword...>`
 - `asosuite tracked-keywords remove [--json] [--region <REGION>] [--platform <PLATFORM>] --app <APP_ID_OR_URL_OR_PLANNED_ID> <keyword...>`
+- `asosuite tracked-keywords note set [--json] [--region <REGION>] [--platform <PLATFORM>] --app <APP_ID_OR_URL_OR_PLANNED_ID> --keyword <KEYWORD> --text <TEXT>`
+- `asosuite tracked-keywords note clear [--json] [--region <REGION>] [--platform <PLATFORM>] --app <APP_ID_OR_URL_OR_PLANNED_ID> --keyword <KEYWORD>`
+- `asosuite tracked-keywords tags set [--json] [--region <REGION>] [--platform <PLATFORM>] --app <APP_ID_OR_URL_OR_PLANNED_ID> --keyword <KEYWORD> [--tag <TAG_ID> | --tags <TAG_IDS>]`
+- `asosuite tags list [--json]`
+- `asosuite tags create [--json] --name <NAME> --color <COLOR>`
+- `asosuite tags edit [--json] --id <TAG_ID> [--name <NAME>] [--color <COLOR>]`
+- `asosuite tags delete [--json] --id <TAG_ID>`
 - `asosuite related-apps list [--json] --app <APP_ID_OR_URL> [--platform <PLATFORM>]`
 - `asosuite related-apps add [--json] --app <APP_ID_OR_URL> --related <APP_ID_OR_URL> [--platform <PLATFORM>] [--region <REGION>]`
 - `asosuite related-apps remove [--json] --app <APP_ID_OR_URL> --related <APP_ID_OR_URL> [--platform <PLATFORM>]`
@@ -63,7 +70,7 @@ Supported platforms: `iphone`, `ipad`, `mac`, `appletv`, `watch`, `vision`.
 
 Use `--json` on any data command for single-line JSON output.
 
-`tracked-keywords list` is paginated to 50 keywords per page. Supported sort fields are: `keyword`, `relevance`, `popularity`, `difficulty`, `position`, `lastUpdate`.
+`tracked-keywords list` is paginated to 50 keywords per page. Supported sort fields are: `keyword`, `tags`, `notes`, `relevance`, `popularity`, `difficulty`, `position`, `lastUpdate`.
 
 ## Examples
 
@@ -175,6 +182,32 @@ asosuite tracked-keywords list --app 6448311069 --platform iphone --region US --
 
 ```bash
 asosuite tracked-keywords list --app my-next-app --platform iphone --region US --page 1 --sort relevance --order desc
+```
+
+### Create and list keyword tags
+
+```bash
+asosuite tags create --name important --color "#ef4444"
+```
+
+```bash
+asosuite tags list
+```
+
+### Add notes and tags to a keyword
+
+```bash
+asosuite tracked-keywords note set --app 6448311069 --platform iphone --region US --keyword "step counter" --text "1: 26.7k,12.9k"
+```
+
+```bash
+asosuite tracked-keywords tags set --app 6448311069 --platform iphone --region US --keyword "step counter" --tag 1
+```
+
+### Filter tracked keywords by tag
+
+```bash
+asosuite tracked-keywords list --app 6448311069 --platform iphone --region US --tag 1 --sort tags --order asc
 ```
 
 ### Fetch chart rankings
